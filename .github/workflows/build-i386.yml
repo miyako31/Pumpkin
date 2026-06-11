@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true   # ← pumpkin-plugin-wit サブモジュールを取得
+          submodules: true   # Required for pumpkin-plugin-wit submodule
 
       - name: Install cross
         uses: taiki-e/install-action@v2
