@@ -1,7 +1,6 @@
 name: Cargo Build, Test, and Linting
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
