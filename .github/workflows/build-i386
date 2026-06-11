@@ -1,28 +1,25 @@
 name: Build i386
 
 on:
-  workflow_dispatch:        # 手動実行
-  push:
-    branches: [master]      # master への push 時にも実行したい場合はこのまま
-    # branches: []          # push 時の自動実行を無効にしたい場合はこちら
+  workflow_dispatch:   # 手動実行のみ
 
+# このワークフロー単独で完結させる（他ワークフローに依存しない）
 jobs:
   build:
     name: Build (i686-unknown-linux-gnu)
     runs-on: ubuntu-latest
+    # 他のジョブのキャンセルを受けないよう独立させる
+    # strategy は使わず単一ジョブにする
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # cross を使って i686 向けにクロスコンパイルする
-      # cross は Docker 経由で適切なリンカ・ライブラリを自動セットアップしてくれる
       - name: Install cross
         uses: taiki-e/install-action@v2
         with:
           tool: cross
 
-      # rust-toolchain.toml があるので rustup は自動で適切なバージョンをセットアップする
       - name: Set up Rust cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -30,15 +27,11 @@ jobs:
 
       - name: Build (release)
         run: cross build --release --target i686-unknown-linux-gnu
-        env:
-          # cross が Docker イメージを pull できるよう CROSS_CONTAINER_OPTS を必要に応じて設定
-          CROSS_NO_WARNINGS: "0"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: pumpkin-i386-linux
-          # cross のビルド成果物は target/<TARGET>/release/ に置かれる
           path: target/i686-unknown-linux-gnu/release/pumpkin
           if-no-files-found: error
           retention-days: 30
