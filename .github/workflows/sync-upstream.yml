@@ -2,11 +2,11 @@ name: Sync Upstream
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 毎時0分にチェック
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       force_build:
-        description: '差分がなくてもビルドを強制実行する'
+        description: 'Force build even if already up to date'
         type: boolean
         default: true
 
@@ -38,7 +38,6 @@ jobs:
           UPSTREAM=$(git rev-parse upstream/master)
           if [ "$LOCAL" = "$UPSTREAM" ]; then
             echo "Already up to date."
-            # 手動実行で force_build が true の場合はビルドを実行
             echo "updated=${{ github.event.inputs.force_build || 'false' }}" >> $GITHUB_OUTPUT
           else
             git merge upstream/master --ff-only
