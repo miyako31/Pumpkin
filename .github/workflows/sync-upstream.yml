@@ -1,0 +1,79 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # 毎時0分にチェック
+  workflow_dispatch:
+
+permissions:
+  contents: write  # リリース作成に必要
+
+jobs:
+  sync:
+    name: Sync with upstream
+    runs-on: ubuntu-latest
+    outputs:
+      updated: ${{ steps.sync.outputs.updated }}
+      sha: ${{ steps.sync.outputs.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync upstream
+        id: sync
+        run: |
+          git remote add upstream https://github.com/Pumpkin-MC/Pumpkin.git || true
+          git fetch upstream master
+          LOCAL=$(git rev-parse HEAD)
+          UPSTREAM=$(git rev-parse upstream/master)
+          if [ "$LOCAL" = "$UPSTREAM" ]; then
+            echo "Already up to date."
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            git merge upstream/master --ff-only
+            git push origin master
+            echo "updated=true" >> $GITHUB_OUTPUT
+            echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-release:
+    name: Build and Release (i686-unknown-linux-gnu)
+    needs: sync
+    if: needs.sync.outputs.updated == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Set up Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: i686-unknown-linux-gnu
+
+      - name: Build (release)
+        run: cross build --release --target i686-unknown-linux-gnu
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA=${{ needs.sync.outputs.sha }}
+          TAG="build-${SHA}"
+          gh release create "$TAG" \
+            target/i686-unknown-linux-gnu/release/pumpkin \
+            --title "Pumpkin i386 build (${SHA})" \
+            --notes "Automated i386 build from upstream commit ${SHA}." \
+            --latest
