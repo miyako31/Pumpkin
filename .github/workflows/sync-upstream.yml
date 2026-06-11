@@ -4,9 +4,14 @@ on:
   schedule:
     - cron: '0 * * * *'  # 毎時0分にチェック
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: '差分がなくてもビルドを強制実行する'
+        type: boolean
+        default: true
 
 permissions:
-  contents: write  # リリース作成に必要
+  contents: write
 
 jobs:
   sync:
@@ -33,13 +38,14 @@ jobs:
           UPSTREAM=$(git rev-parse upstream/master)
           if [ "$LOCAL" = "$UPSTREAM" ]; then
             echo "Already up to date."
-            echo "updated=false" >> $GITHUB_OUTPUT
+            # 手動実行で force_build が true の場合はビルドを実行
+            echo "updated=${{ github.event.inputs.force_build || 'false' }}" >> $GITHUB_OUTPUT
           else
             git merge upstream/master --ff-only
             git push origin master
             echo "updated=true" >> $GITHUB_OUTPUT
-            echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           fi
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
   build-and-release:
     name: Build and Release (i686-unknown-linux-gnu)
@@ -71,7 +77,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           SHA=${{ needs.sync.outputs.sha }}
-          TAG="build-${SHA}"
+          TAG="build-${SHA}-$(date +%Y%m%d%H%M%S)"
           gh release create "$TAG" \
             target/i686-unknown-linux-gnu/release/pumpkin \
             --title "Pumpkin i386 build (${SHA})" \
