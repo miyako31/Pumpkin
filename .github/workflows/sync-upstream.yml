@@ -32,6 +32,8 @@ jobs:
       - name: Sync upstream
         id: sync
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/Pumpkin-MC/Pumpkin.git || true
           git fetch upstream master
           LOCAL=$(git rev-parse HEAD)
@@ -40,7 +42,8 @@ jobs:
             echo "Already up to date."
             echo "updated=${{ github.event.inputs.force_build || 'false' }}" >> $GITHUB_OUTPUT
           else
-            git merge upstream/master --ff-only
+            # Merge upstream changes, keeping our files (workflows) on conflict
+            git merge upstream/master --no-edit --strategy-option=ours
             git push origin master
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
