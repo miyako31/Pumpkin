@@ -40,9 +40,13 @@ jobs:
           UPSTREAM=$(git rev-parse upstream/master)
           if [ "$LOCAL" = "$UPSTREAM" ]; then
             echo "Already up to date."
-            echo "updated=${{ github.event.inputs.force_build || 'false' }}" >> $GITHUB_OUTPUT
+            # Only build if explicitly triggered manually with force_build=true
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force_build }}" = "true" ]; then
+              echo "updated=true" >> $GITHUB_OUTPUT
+            else
+              echo "updated=false" >> $GITHUB_OUTPUT
+            fi
           else
-            # Merge upstream changes, keeping our files (workflows) on conflict
             git merge upstream/master --no-edit --strategy-option=ours
             git push origin master
             echo "updated=true" >> $GITHUB_OUTPUT
